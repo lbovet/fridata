@@ -12,9 +12,20 @@ SevSeg sevseg;
 PushButton selectButton = PushButton(41);
 PushButton incrButton = PushButton(40);
 
+PushButton one = PushButton(16);
+PushButton two = PushButton(15);
+PushButton three = PushButton(18);
+PushButton four = PushButton(17);
+
+const int BUZZER = 4;
+
+boolean started, turned;
+int tiltCounter;
+
 char daysOfTheWeek[7][12] = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
 
 // modes
+const int PRINT = -1;
 const int SHOW_TIME = 0;
 const int SET_WEEKDAY = 1;
 const int SET_DAY = 2;
@@ -26,7 +37,7 @@ const int SET_MINUTE = 6;
 char dayCaptions[7][5] = {"lund", "nnar", "nner", "jeud", "vend", "sann", "dinn"};
 char monthsCaptions[12][5] = {"janv", "fevr", "nnar", "avri", "nnai", "juin", "juil", "aout", "sept", "octo", "nove", "dece"};
 
-int mode = SHOW_TIME;
+int mode = PRINT;
 
 void send()
 {
@@ -98,6 +109,43 @@ void select(Button &button)
   send();
 }
 
+void led(int r, int g, int b)
+{
+  analogWrite(5, r);
+  analogWrite(6, g);
+  analogWrite(7, b);
+}
+
+void buttonDown(Button &button)
+{
+  int freq = 0;
+  if(button.is(one)) {
+    led(255, 20, 0);
+    freq = 1000;
+  }
+  if (button.is(two))
+  {
+    led(0, 255, 20);
+    freq = 2000;
+  }
+  if (button.is(three))
+  {
+    led(180, 200, 0);
+    freq = 3000;
+  }
+  if (button.is(four))
+  {
+    led(200, 20, 150);
+    freq = 4000;
+  }
+  tone(BUZZER, freq, 150);
+}
+
+void buttonUp(PushButton &button, uint16_t duration)
+{
+  led(0,0,0);
+}
+
 void increment(Button &button)
 {
   switch (mode)
@@ -150,6 +198,20 @@ void incrementHold(Button &button, uint16_t duration, uint16_t repeatCount)
   increment(button);
 }
 
+void updateTilt()
+{
+  boolean newTilt = analogRead(A12) > 512;
+  if(newTilt != turned) {
+    tiltCounter++;
+    if(tiltCounter > 30) {
+      turned = newTilt;
+      tiltCounter = 0;
+    }
+  } else {
+    tiltCounter = 0;
+  }
+}
+
 void setup()
 {
   // seg display
@@ -164,19 +226,60 @@ void setup()
   delay(1000);
 
   URTCLIB_WIRE.begin();
-  //rtc.set(10, 32, 12, 6, 25, 2, 23);
 
-  // button
+  // front buttons
+  pinMode(14, OUTPUT);
+  digitalWrite(14, LOW);
+
+  one.onPress(buttonDown);
+  two.onPress(buttonDown);
+  three.onPress(buttonDown);
+  four.onPress(buttonDown);
+
+  one.onRelease(buttonUp);
+  two.onRelease(buttonUp);
+  three.onRelease(buttonUp);
+  four.onRelease(buttonUp);
+
+  // setting buttons
   selectButton.onPress(select);
   incrButton.onPress(increment);
   incrButton.onHoldRepeat(1000, 100, incrementHold);
+
+  // LED
+  pinMode(5, OUTPUT);
+  pinMode(6, OUTPUT);
+  pinMode(7, OUTPUT);
 }
 
 void loop()
 {
-  selectButton.update();
-  incrButton.update();
-  sevseg.refreshDisplay();
-  rtc.refresh();
-  updateDisplay();
+  if(!started) {
+    tone(BUZZER, 1000, 20);
+    started = true;
+  }
+  boolean wasTurned = turned;
+  updateTilt();
+  if(turned) {
+    if(!wasTurned )
+    {
+      mode = SHOW_TIME;
+      tone(BUZZER, 440, 30);
+    }
+    selectButton.update();
+    incrButton.update();
+    sevseg.refreshDisplay();
+    rtc.refresh();
+    updateDisplay();
+  } else {
+    one.update();
+    two.update();
+    three.update();
+    four.update();
+    if(wasTurned)
+      tone(BUZZER, 440, 30);
+      mode = PRINT;
+      sevseg.blank();
+      sevseg.refreshDisplay();
+  }
 }
