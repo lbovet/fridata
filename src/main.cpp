@@ -9,15 +9,26 @@
 uRTCLib rtc(0x68);
 SevSeg sevseg;
 
+const int BUZZER = 3;
+const int LED_R = 4;
+const int LED_G = 5;
+const int LED_B = 6;
+
+const int BUTTON_LOW = 14;
+const int BUTTON_TWO = 15;
+const int BUTTON_ONE = 16;
+const int BUTTON_FOUR = 17;
+const int BUTTON_THREE = 18;
+
+const int TILT_SWITCH = A12;
+
 PushButton selectButton = PushButton(41);
 PushButton incrButton = PushButton(40);
 
-PushButton one = PushButton(16);
-PushButton two = PushButton(15);
-PushButton three = PushButton(18);
-PushButton four = PushButton(17);
-
-const int BUZZER = 4;
+PushButton one = PushButton(BUTTON_ONE);
+PushButton two = PushButton(BUTTON_TWO);
+PushButton three = PushButton(BUTTON_THREE);
+PushButton four = PushButton(BUTTON_FOUR);
 
 boolean started, turned;
 int tiltCounter;
@@ -111,9 +122,9 @@ void select(Button &button)
 
 void led(int r, int g, int b)
 {
-  analogWrite(5, r);
-  analogWrite(6, g);
-  analogWrite(7, b);
+  analogWrite(LED_R, r);
+  analogWrite(LED_G, g);
+  analogWrite(LED_B, b);
 }
 
 void buttonDown(Button &button)
@@ -141,7 +152,7 @@ void buttonDown(Button &button)
   tone(BUZZER, freq, 150);
 }
 
-void buttonUp(PushButton &button, uint16_t duration)
+void buttonUp(Button &button, uint16_t duration)
 {
   led(0,0,0);
 }
@@ -200,7 +211,7 @@ void incrementHold(Button &button, uint16_t duration, uint16_t repeatCount)
 
 void updateTilt()
 {
-  boolean newTilt = analogRead(A12) > 512;
+  boolean newTilt = analogRead(TILT_SWITCH) > 512;
   if(newTilt != turned) {
     tiltCounter++;
     if(tiltCounter > 30) {
@@ -247,9 +258,9 @@ void setup()
   incrButton.onHoldRepeat(1000, 100, incrementHold);
 
   // LED
-  pinMode(5, OUTPUT);
-  pinMode(6, OUTPUT);
-  pinMode(7, OUTPUT);
+  pinMode(LED_R, OUTPUT);
+  pinMode(LED_G, OUTPUT);
+  pinMode(LED_B, OUTPUT);
 }
 
 void loop()
