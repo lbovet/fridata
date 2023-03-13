@@ -5,6 +5,7 @@
 #include <ButtonEventCallback.h>
 #include <PushButton.h>
 #include <Bounce2.h>
+#include "USBPrinter.h"
 
 uRTCLib rtc(0x68);
 SevSeg sevseg;
@@ -30,10 +31,8 @@ PushButton two = PushButton(BUTTON_TWO);
 PushButton three = PushButton(BUTTON_THREE);
 PushButton four = PushButton(BUTTON_FOUR);
 
-boolean started, turned;
+boolean started, turned, printed;
 int tiltCounter;
-
-char daysOfTheWeek[7][12] = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
 
 // modes
 const int PRINT = -1;
@@ -44,6 +43,9 @@ const int SET_MONTH = 3;
 const int SET_YEAR = 4;
 const int SET_HOUR = 5;
 const int SET_MINUTE = 6;
+
+char daysOfWeek[7][9] = { "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche" };
+char months[12][10] = { "janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre" };
 
 char dayCaptions[7][5] = {"lund", "nnar", "nner", "jeud", "vend", "sann", "dinn"};
 char monthsCaptions[12][5] = {"janv", "fevr", "nnar", "avri", "nnai", "juin", "juil", "aout", "sept", "octo", "nove", "dece"};
@@ -60,7 +62,7 @@ void send()
   Serial.print(rtc.day());
 
   Serial.print(" (");
-  Serial.print(daysOfTheWeek[rtc.dayOfWeek()-1]);
+  Serial.print(daysOfWeek[rtc.dayOfWeek()-1]);
   Serial.print(") ");
 
   Serial.print(rtc.hour());
@@ -223,6 +225,24 @@ void updateTilt()
   }
 }
 
+class PrinterOper : public USBPrinterAsyncOper
+{
+  public:
+    uint8_t OnInit(USBPrinter *pPrinter);
+};
+
+uint8_t PrinterOper::OnInit(USBPrinter *pPrinter)
+{
+  Serial.println(F("USB Printer OnInit"));
+  Serial.print(F("Bidirectional="));
+  Serial.println(pPrinter->isBidirectional());
+  return 0;
+}
+
+USB     usb;
+PrinterOper AsyncOper;
+USBPrinter  p(&usb, &AsyncOper);
+
 void setup()
 {
   // seg display
@@ -234,7 +254,7 @@ void setup()
   sevseg.setBrightness(40);
 
   Serial.begin(9600);
-  delay(1000);
+  //delay(1000);
 
   URTCLIB_WIRE.begin();
 
@@ -261,6 +281,92 @@ void setup()
   pinMode(LED_R, OUTPUT);
   pinMode(LED_G, OUTPUT);
   pinMode(LED_B, OUTPUT);
+
+  // USB
+  if (usb.Init()) {
+    Serial.println(F("USB host failed to initialize"));
+    while (1) delay(1);
+  }
+}
+
+const char ESC = 0x1B;
+const char LF = 0x0A;
+
+void printLabel(char* dayOfWeek, char* dayOfMonth, char* month, char* year, char* name)
+{
+  // Bold
+  p.write(ESC);
+  p.write('E');
+  // Select font
+  p.write(ESC);
+  p.write('k');
+  p.write(0x0A); // Brussel (outline font)
+  // Font size
+  p.write(ESC);
+  p.write('X');
+  p.write((uint8_t)0);
+  p.write(0x38); // Quite big
+  p.write((uint8_t)0);
+  // Artificial command needed after font size
+  p.write(ESC);
+  p.write('5');
+  //
+  p.write(dayOfWeek);
+  // Remove Bold
+  p.write(ESC);
+  p.write('F');
+  // Select font
+  p.write(ESC);
+  p.write('k');
+  p.write(0x0B); // Helsinki (outline font)
+  //
+  p.write(' ');
+  p.write(dayOfMonth);
+  p.write(LF);
+  // Align
+  p.write(ESC);
+  p.write('a');
+  p.write(0x02); // Right
+  // Font size
+  p.write(ESC);
+  p.write('X');
+  p.write((uint8_t)0);
+  p.write(0x20); // Quite small
+  p.write((uint8_t)0);
+  // Italic
+  p.write(ESC);
+  p.write('4');
+  //
+  p.write(month);
+  p.write(' ');
+  p.write(year);
+  // Remove italic
+  p.write(ESC);
+  p.write('5');
+  //
+  p.write(LF);
+  // Align
+  p.write(ESC);
+  p.write('a');
+  p.write((uint8_t)0x00); // Left
+  // Font size
+  p.write(ESC);
+  p.write('X');
+  p.write((uint8_t)0);
+  p.write(0x28); // Medium
+  p.write((uint8_t)0);
+  if(name) {
+    // Bold
+    p.write(ESC);
+    p.write('E');
+    //
+    p.write(name);
+    p.write(LF);
+  }
+  p.write(LF);
+  p.write(LF);
+  p.write(LF);
+  p.write(LF);
 }
 
 void loop()
@@ -269,6 +375,41 @@ void loop()
     tone(BUZZER, 1000, 20);
     started = true;
   }
+
+  if (p.isReady() && !printed) {
+    Serial.println(F("Init ESC POS printer"));
+    // Reset
+    p.write(ESC);
+    p.write('@');
+    //
+    p.write(LF);
+    // Select Charset
+    p.write(ESC);
+    p.write('t');
+    p.write(0x02); // Western (windows-1252)
+    // Left margin
+    p.write(ESC);
+    p.write('k');
+    p.write(0x01); // from column
+    // Right margin
+    p.write(ESC);
+    p.write('Q');
+    p.write(0x29); // to column
+
+    rtc.refresh();
+    char dayOfWeek[10];
+    sprintf(dayOfWeek, "%s", daysOfWeek[rtc.dayOfWeek() - 1]);
+    char dayOfMonth[3];
+    sprintf(dayOfMonth, "%02d", rtc.day());
+    char month[10];
+    sprintf(month, "%s", months[rtc.month() - 1]);
+    char year[5];
+    sprintf(year, "20%02d", rtc.year());
+    printLabel(dayOfWeek, dayOfMonth, month, year, 0);
+    printed = true;
+  }
+
+  usb.Task();
   boolean wasTurned = turned;
   updateTilt();
   if(turned) {
@@ -287,10 +428,11 @@ void loop()
     two.update();
     three.update();
     four.update();
-    if(wasTurned)
+    if(wasTurned) {
       tone(BUZZER, 440, 30);
       mode = PRINT;
       sevseg.blank();
       sevseg.refreshDisplay();
+    }
   }
 }
