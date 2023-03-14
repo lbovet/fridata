@@ -49,7 +49,7 @@ const int SET_HOUR = 5;
 const int SET_MINUTE = 6;
 
 char daysOfWeek[7][9] = {"Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"};
-char months[12][10] = {"janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"};
+char months[12][10] = {"janvier", "fï¿½vrier", "mars", "avril", "mai", "juin", "juillet", "aoï¿½t", "septembre", "octobre", "novembre", "dï¿½cembre"};
 
 char dayCaptions[7][5] = {"lund", "nnar", "nner", "jeud", "vend", "sann", "dinn"};
 char monthsCaptions[12][5] = {"janv", "fevr", "nnar", "avri", "nnai", "juin", "juil", "aout", "sept", "octo", "nove", "dece"};
@@ -327,8 +327,36 @@ void setup()
 const char ESC = 0x1B;
 const char LF = 0x0A;
 
-void printLabel(char *dayOfWeek, char *dayOfMonth, char *month, char *year, char *name)
+void printLabel(char *dayOfWeek, char *dayOfMonth, char *month, char *year, char* hour, char* minute, char *name)
 {
+  // Select font
+  p.write(ESC);
+  p.write('k');
+  p.write(0x0B); // Helsinki (outline font)
+  // Font size
+  p.write(ESC);
+  p.write('X');
+  p.write((uint8_t)0);
+  p.write(0x16); // Rather small
+  p.write((uint8_t)0);
+  //  Align
+  p.write(ESC);
+  p.write('a');
+  p.write(0x02); // Right
+  // Font size
+  p.write(ESC);
+  p.write('X');
+  p.write((uint8_t)0);
+  p.write(0x20); // Quite small
+  p.write((uint8_t)0);
+  //
+  p.write(hour);
+  p.write(':');
+  p.write(minute);
+  // Align
+  p.write(ESC);
+  p.write('a');
+  p.write((uint8_t)0x00); // Left
   // Bold
   p.write(ESC);
   p.write('E');
@@ -357,7 +385,6 @@ void printLabel(char *dayOfWeek, char *dayOfMonth, char *month, char *year, char
   //
   p.write(' ');
   p.write(dayOfMonth);
-  // p.write(LF);
   //  Align
   p.write(ESC);
   p.write('a');
@@ -445,8 +472,6 @@ void loop()
     // Reset
     p.write(ESC);
     p.write('@');
-    //
-    p.write(LF);
     // Select Charset
     p.write(ESC);
     p.write('t');
@@ -469,7 +494,11 @@ void loop()
     sprintf(month, "%s", months[rtc.month() - 1]);
     char year[5];
     sprintf(year, "20%02d", rtc.year());
-    printLabel(dayOfWeek, dayOfMonth, month, year, name);
+    char hour[3];
+    sprintf(hour, "%02d", rtc.hour());
+    char minute[3];
+    sprintf(minute, "%02d", rtc.minute());
+    printLabel(dayOfWeek, dayOfMonth, month, year, hour, minute, name);
     name = 0;
   }
 
