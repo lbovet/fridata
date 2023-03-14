@@ -49,7 +49,7 @@ const int SET_HOUR = 5;
 const int SET_MINUTE = 6;
 
 char daysOfWeek[7][9] = {"Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"};
-char months[12][10] = {"janvier", "fï¿½vrier", "mars", "avril", "mai", "juin", "juillet", "aoï¿½t", "septembre", "octobre", "novembre", "dï¿½cembre"};
+char months[12][11] = {"janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"};
 
 char dayCaptions[7][5] = {"lund", "nnar", "nner", "jeud", "vend", "sann", "dinn"};
 char monthsCaptions[12][5] = {"janv", "fevr", "nnar", "avri", "nnai", "juin", "juil", "aout", "sept", "octo", "nove", "dece"};
