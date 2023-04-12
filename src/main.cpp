@@ -483,7 +483,7 @@ void loop()
     char dayOfWeek[10];
     sprintf(dayOfWeek, "%s", daysOfWeek[rtc.dayOfWeek() - 1]);
     char dayOfMonth[3];
-    sprintf(dayOfMonth, "%02d", rtc.day());
+    sprintf(dayOfMonth, "%d", rtc.day());
     char month[10];
     sprintf(month, "%s", months[rtc.month() - 1]);
     char year[5];
